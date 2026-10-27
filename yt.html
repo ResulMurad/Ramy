@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ramy player</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#p{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}</style></head>
+<body><div id="p"></div>
+<script>
+var q = new URLSearchParams(location.search), P = null, ready = false, parentWin = window.parent;
+function send(o){ try{ parentWin.postMessage(Object.assign({ramy:1}, o), '*') }catch(e){} }
+var s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+window.onYouTubeIframeAPIReady = function(){ make(q.get('v'), +q.get('start') || 0) };
+function make(id, start){
+  if(P){ try{ P.destroy() }catch(e){} document.body.innerHTML = '<div id="p"></div>' }
+  P = new YT.Player('p', { videoId: id, host: 'https://www.youtube-nocookie.com',
+    playerVars: {playsinline:1, controls:0, rel:0, modestbranding:1, disablekb:1, fs:0, iv_load_policy:3, start:Math.floor(start), origin: location.origin},
+    events: {
+      onReady: function(){ ready = true; send({type:'ready'}) },
+      onStateChange: function(e){ send({type:'state', s:e.data}) },
+      onError: function(e){ send({type:'error', c:e.data}) }
+    } });
+}
+setInterval(function(){ if(!ready) return; try{ send({type:'time', t:P.getCurrentTime()||0, d:P.getDuration()||0}) }catch(e){} }, 250);
+window.addEventListener('message', function(e){
+  var m = e.data; if(!m || !m.ramy || !ready) return;
+  try{
+    if(m.cmd === 'play') P.playVideo(); else if(m.cmd === 'pause') P.pauseVideo();
+    else if(m.cmd === 'seek') P.seekTo(m.t, true); else if(m.cmd === 'rate') P.setPlaybackRate(m.r);
+    else if(m.cmd === 'vol') P.setVolume(m.v);
+  }catch(x){}
+});
+</script></body></html>
